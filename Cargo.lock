@@ -1564,15 +1564,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "image_viewer"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "image",
- "rfd",
-]
-
-[[package]]
 name = "indexmap"
 version = "2.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2490,6 +2481,15 @@ dependencies = [
  "fdeflate",
  "flate2",
  "miniz_oxide 0.8.9",
+]
+
+[[package]]
+name = "point-transform"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "image",
+ "rfd",
 ]
 
 [[package]]
