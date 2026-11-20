@@ -2,64 +2,109 @@ use eframe::egui;
 
 use super::View;
 use crate::app::ViewerApp;
+use crate::app::layer::Layer;
 use crate::volume::Volume;
 
 const MIN_LABEL_ZOOM: f32 = 30.0;
+const PANE_GAP: f32 = 8.0;
 
-impl ViewerApp {
-    /// central panel with the image
-    pub(super) fn show_canvas(&mut self, ui: &mut egui::Ui) {
-        let Some(file) = &self.file else { return };
-
-        egui::CentralPanel::default().show(ui, |ui| {
-            let Some(texture) = file.result.texture() else {
-                ui.label("cannot display this image");
-                return;
-            };
-            Self::show_image(ui, texture, &mut self.view, file.result.volume());
-        });
+impl View {
+    /// zoom and offset that fit the whole image into a pane, centered
+    fn fit(pane: egui::Vec2, image: egui::Vec2) -> Self {
+        let zoom = (pane.x / image.x).min(pane.y / image.y);
+        let offset = (pane - image * zoom) / 2.0;
+        // ^ measured from left to right, divided by two so the image is centered
+        Self { zoom, offset }
     }
 
-    fn show_image(ui: &mut egui::Ui, texture: &egui::TextureHandle, view: &mut Option<View>, volume: &Volume) {
-        // reserving space to paint image
-        // rect is the size of the free space, response - what we did just now (ie. click drag zoom whatever)
-        let (rect, response) = ui.allocate_exact_size(ui.available_size(), egui::Sense::click_and_drag());
-        let image_size = texture.size_vec2();
+    /// dragging and scroll-zooming on one pane. the offset is measured from the pane's
+    /// top-left corner, so one View works for every pane of the same size
+    fn handle_input(&mut self, ui: &egui::Ui, rect: egui::Rect, response: &egui::Response) {
+        self.offset += response.drag_delta();
 
-        // fitting the image on screen
-        if view.is_none() || response.double_clicked() {
-            let zoom = (rect.width() / image_size.x).min(rect.height() / image_size.y);
-            let offset = (rect.size() - image_size * zoom) / 2.0;
-            // ^ measured from left to right, divided by two so the image is centered
-
-            *view = Some(View { zoom, offset });
-        }
-        let Some(view) = view.as_mut() else { return };
-
-        // dragging the image
-        view.offset += response.drag_delta();
-
-        // zoom
         if let Some(cursor) = response.hover_pos() {
             let scroll = ui.input(|i| i.smooth_scroll_delta.y);
 
             if scroll != 0.0 {
                 let factor = (scroll * 0.002).exp();
-                let cursor_in_panel = cursor - rect.min; // all cursor calculations are based off the top-left corner as default
-                view.offset = cursor_in_panel - (cursor_in_panel - view.offset) * factor;
-                view.zoom *= factor;
+                let cursor_in_pane = cursor - rect.min;
+                self.offset = cursor_in_pane - (cursor_in_pane - self.offset) * factor;
+                self.zoom *= factor;
             }
         }
+    }
+}
 
-        let image_rect = egui::Rect::from_min_size(rect.min + view.offset, image_size * view.zoom);
-        let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+/// splits the canvas into `count` equally wide panes with a gap between them
+fn split(area: egui::Rect, count: usize) -> Vec<egui::Rect> {
+    let width = (area.width() - PANE_GAP * (count - 1) as f32) / count as f32;
+    (0..count)
+        .map(|i| {
+            let left = area.min.x + i as f32 * (width + PANE_GAP);
+            egui::Rect::from_min_size(egui::pos2(left, area.min.y), egui::vec2(width, area.height()))
+        })
+        .collect()
+}
 
+impl ViewerApp {
+    /// central panel: the result, or original and result side by side, sharing one View
+    pub(super) fn show_canvas(&mut self, ui: &mut egui::Ui) {
+        let Some(file) = &self.file else { return };
+
+        egui::CentralPanel::default().show(ui, |ui| {
+            let panes = if self.side_by_side {
+                vec![("original", &file.original), ("result", &file.result)]
+            } else {
+                vec![("result", &file.result)]
+            };
+
+            // lay out the panes and reserve their space
+            let rects = split(ui.available_rect_before_wrap(), panes.len());
+            let responses: Vec<egui::Response> =
+                rects.iter().map(|&rect| ui.allocate_rect(rect, egui::Sense::click_and_drag())).collect();
+
+            // update the shared view from whichever pane got the input,
+            // before painting, so both panes show the same frame
+            if self.view.is_none() || responses.iter().any(|r| r.double_clicked()) {
+                let volume = file.result.volume();
+                let image_size = egui::vec2(volume.width() as f32, volume.height() as f32);
+                self.view = Some(View::fit(rects[0].size(), image_size));
+            }
+            let Some(view) = &mut self.view else { return };
+            for (rect, response) in rects.iter().zip(&responses) {
+                view.handle_input(ui, *rect, response);
+            }
+
+            // paint every pane with the same view
+            for ((title, layer), rect) in panes.iter().zip(&rects) {
+                Self::paint_pane(ui, *rect, title, layer, view);
+            }
+        });
+    }
+
+    fn paint_pane(ui: &egui::Ui, rect: egui::Rect, title: &str, layer: &Layer, view: &View) {
         let painter = ui.painter_at(rect);
-        painter.image(texture.id(), image_rect, uv, egui::Color32::WHITE);
 
-        if view.zoom >= MIN_LABEL_ZOOM {
-            Self::draw_pixel_values(&painter, rect, image_rect, view.zoom, image_size, volume);
+        if let Some(texture) = layer.texture() {
+            let image_size = texture.size_vec2();
+            let image_rect = egui::Rect::from_min_size(rect.min + view.offset, image_size * view.zoom);
+            let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+            painter.image(texture.id(), image_rect, uv, egui::Color32::WHITE);
+
+            if view.zoom >= MIN_LABEL_ZOOM {
+                Self::draw_pixel_values(&painter, rect, image_rect, view.zoom, image_size, layer.volume());
+            }
+        } else {
+            let font = egui::FontId::proportional(14.0);
+            let color = ui.visuals().text_color();
+            painter.text(rect.center(), egui::Align2::CENTER_CENTER, "cannot display this image", font, color);
         }
+
+        // title in the top-left corner, with a shadow so it reads on any image
+        let pos = rect.left_top() + egui::vec2(8.0, 8.0);
+        let font = egui::FontId::proportional(14.0);
+        painter.text(pos + egui::vec2(1.0, 1.0), egui::Align2::LEFT_TOP, title, font.clone(), egui::Color32::BLACK);
+        painter.text(pos, egui::Align2::LEFT_TOP, title, font, egui::Color32::WHITE);
     }
 
     fn draw_pixel_values(

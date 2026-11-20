@@ -12,6 +12,10 @@ impl ViewerApp {
                 ui.heading(&file.name);
                 let volume = file.original.volume();
                 ui.label(format!("{} x {}, max: {}", volume.width(), volume.height(), volume.maxval()));
+                // the pane width changes, so the old fit no longer fits
+                if ui.checkbox(&mut self.side_by_side, "side by side").changed() {
+                    self.view = None;
+                }
                 ui.separator();
             }
 

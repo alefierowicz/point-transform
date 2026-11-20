@@ -11,6 +11,8 @@ pub struct ViewerApp {
     error: Option<String>,
     view: Option<viewer::View>,
     jpeg_quality: u8,
+    /// original and result next to each other, or only the result
+    side_by_side: bool,
 }
 
 /// an open image: the untouched original and the result that operations are applied to.
@@ -29,7 +31,7 @@ impl LoadedFile {
 
 impl Default for ViewerApp {
     fn default() -> Self {
-        Self { file: None, error: None, view: None, jpeg_quality: 90 }
+        Self { file: None, error: None, view: None, jpeg_quality: 90, side_by_side: true }
     }
 }
 
