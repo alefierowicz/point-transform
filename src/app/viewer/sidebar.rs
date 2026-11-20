@@ -24,6 +24,13 @@ impl ViewerApp {
             }
             ui.add(egui::Slider::new(&mut self.jpeg_quality, 1..=100).text("JPEG quality"));
 
+            if self.file.is_some() {
+                ui.separator();
+                if ui.add(egui::Button::new("reset").min_size(full_width)).clicked() {
+                    self.reset_result();
+                }
+            }
+
             if let Some(msg) = &self.error {
                 ui.separator();
                 ui.colored_label(ui.visuals().error_fg_color, msg);

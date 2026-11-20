@@ -78,6 +78,22 @@ impl ViewerApp {
         self.view = None;
         self.jpeg_quality = 90;
     }
+
+    fn set_result(&mut self, vol: Volume) {
+        let Some(file) = &mut self.file else {
+            return;
+        };
+
+        self.error = None;
+        file.result.replace_volume(vol);
+    }
+
+    fn reset_result(&mut self) {
+        let Some(file) = &self.file else { return };
+        let original = file.original.volume().clone();
+
+        self.set_result(original);
+    }
 }
 
 impl eframe::App for ViewerApp {
