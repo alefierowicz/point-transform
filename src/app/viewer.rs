@@ -19,21 +19,10 @@ impl ViewerApp {
         self.show_canvas(ui);
     }
 
+    /// uploads textures for any layer whose volume changed since the last frame
     fn update_texture(&mut self, ui: &mut egui::Ui) {
-        let Some(file) = &self.file else { return };
-        if self.texture.is_some() {
-            return;
-        }
-
-        let pixels = file.volume.render();
-
-        let size = [file.volume.width(), file.volume.height()];
-        let image = egui::ColorImage::from_rgb(size, &pixels);
-
-        if let Some(texture) = &mut self.texture {
-            texture.set(image, egui::TextureOptions::NEAREST);
-        } else {
-            self.texture = Some(ui.ctx().load_texture("frame", image, egui::TextureOptions::NEAREST));
-        }
+        let Some(file) = &mut self.file else { return };
+        file.original.ensure_texture(ui.ctx(), "original");
+        file.result.ensure_texture(ui.ctx(), "result");
     }
 }

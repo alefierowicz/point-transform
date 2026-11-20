@@ -10,12 +10,8 @@ impl ViewerApp {
         egui::Panel::left("sidebar").resizable(false).exact_size(SIDEBAR_WIDTH).show(ui, |ui| {
             if let Some(file) = &self.file {
                 ui.heading(&file.name);
-                ui.label(format!(
-                    "{} x {}, max: {}",
-                    file.volume.width(),
-                    file.volume.height(),
-                    file.volume.maxval()
-                ));
+                let volume = file.original.volume();
+                ui.label(format!("{} x {}, max: {}", volume.width(), volume.height(), volume.maxval()));
                 ui.separator();
             }
 

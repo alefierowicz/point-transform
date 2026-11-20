@@ -12,11 +12,11 @@ impl ViewerApp {
         let Some(file) = &self.file else { return };
 
         egui::CentralPanel::default().show(ui, |ui| {
-            let Some(texture) = &self.texture else {
+            let Some(texture) = file.result.texture() else {
                 ui.label("cannot display this image");
                 return;
             };
-            Self::show_image(ui, texture, &mut self.view, &file.volume);
+            Self::show_image(ui, texture, &mut self.view, file.result.volume());
         });
     }
 

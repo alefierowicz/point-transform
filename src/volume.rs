@@ -1,6 +1,6 @@
 mod getters;
 mod render;
-
+#[derive(Clone)]
 pub struct Volume {
     h: usize,
     w: usize,
