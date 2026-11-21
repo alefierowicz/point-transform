@@ -1,0 +1,40 @@
+use crate::volume::Volume;
+impl Volume {
+
+    pub fn convolve(&self, kernel: &[f64], kw:usize, kh:usize) -> Volume{
+        let raw = self.convolve_raw(kernel, kw, kh);
+        let data :Vec<u16> = raw.iter().map(|v| v.round().clamp(0.0, self.maxval as f64) as u16).collect();
+        Volume { h: self.h, w: self.w, maxval: self.maxval, data }
+    }
+
+    fn convolve_raw(&self, kernel: &[f64], kw:usize, kh:usize) -> Vec<f64> {
+        let (w,h) = (self.w as isize, self.h as isize);
+        // distance from edge to centre of mask
+        let (rx,ry) = ((kw/2) as isize, (kh/2) as isize);
+
+        let mut out: Vec<f64> = Vec::with_capacity(self.data.len());
+        for y in 0..h {
+            for x in 0..w {
+                let mut sum = [0.0;3];
+                for ky in 0..kh {
+                    // clamping to avoid overflow on edges
+                    let sy = (y + ky as isize - ry).clamp(0,h-1) as usize; 
+                    for kx in 0..kw {
+                        // same here
+                        let sx = (x + kx as isize -rx).clamp(0,w-1) as usize;
+                        let weight = kernel[ky * kw + kx];
+                        let i = (sy*self.w + sx) * 3;
+                        for c in 0..3 {
+                            sum[c] += weight * self.data[i + c] as f64;
+                        }
+                    } 
+                }
+
+                out.extend_from_slice(&sum);
+            }
+        }
+        out    
+    }
+}
+
+
