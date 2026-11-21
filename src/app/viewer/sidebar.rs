@@ -1,6 +1,7 @@
 use eframe::egui;
 
 use crate::app::ViewerApp;
+use crate::volume::point::PointOp;
 
 const SIDEBAR_WIDTH: f32 = 280.0;
 
@@ -29,6 +30,32 @@ impl ViewerApp {
             ui.add(egui::Slider::new(&mut self.jpeg_quality, 1..=100).text("JPEG quality"));
 
             if self.file.is_some() {
+                ui.separator();
+                ui.horizontal(|ui| {
+                    for (value, label) in self.point_values.iter_mut().zip(["R", "G", "B"]) {
+                        ui.label(label);
+                        ui.add(egui::DragValue::new(value).speed(0.1).max_decimals(2));
+                    }
+                });
+
+                // two rows of two, so the buttons fit the sidebar width
+                let half_width = egui::vec2((ui.available_width() - ui.spacing().item_spacing.x) / 2.0, 0.0);
+                ui.horizontal(|ui| {
+                    if ui.add(egui::Button::new("add").min_size(half_width)).clicked() {
+                        self.apply_point_op(PointOp::Add(self.point_values));
+                    }
+                    if ui.add(egui::Button::new("subtract").min_size(half_width)).clicked() {
+                        self.apply_point_op(PointOp::Subtract(self.point_values));
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if ui.add(egui::Button::new("multiply").min_size(half_width)).clicked() {
+                        self.apply_point_op(PointOp::Multiply(self.point_values));
+                    }
+                    if ui.add(egui::Button::new("divide").min_size(half_width)).clicked() {
+                        self.apply_point_op(PointOp::Divide(self.point_values));
+                    }
+                });
                 ui.separator();
                 if ui.add(egui::Button::new("reset").min_size(full_width)).clicked() {
                     self.reset_result();

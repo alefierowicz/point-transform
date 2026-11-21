@@ -2,7 +2,11 @@ mod landing;
 mod layer;
 mod viewer;
 
-use crate::{jpeg, loader::load_file, volume::Volume};
+use crate::{
+    jpeg,
+    loader::load_file,
+    volume::{Volume, point::PointOp},
+};
 use eframe::egui;
 use layer::Layer;
 use std::path::Path;
@@ -13,6 +17,8 @@ pub struct ViewerApp {
     jpeg_quality: u8,
     /// original and result next to each other, or only the result
     side_by_side: bool,
+    /// R, G, B values for the point operations, in the image's own units
+    point_values: [f64; 3],
 }
 
 /// an open image: the untouched original and the result that operations are applied to.
@@ -31,7 +37,7 @@ impl LoadedFile {
 
 impl Default for ViewerApp {
     fn default() -> Self {
-        Self { file: None, error: None, view: None, jpeg_quality: 90, side_by_side: true }
+        Self { file: None, error: None, view: None, jpeg_quality: 90, side_by_side: true, point_values: [0.0; 3] }
     }
 }
 
@@ -95,6 +101,16 @@ impl ViewerApp {
         let original = file.original.volume().clone();
 
         self.set_result(original);
+    }
+
+    /// applies a point operation to the result, so operations stack
+    fn apply_point_op(&mut self, op: PointOp) {
+        let Some(file) = &self.file else { return };
+
+        match file.result.volume().apply(&op) {
+            Ok(volume) => self.set_result(volume),
+            Err(msg) => self.error = Some(msg),
+        }
     }
 }
 
