@@ -1,6 +1,7 @@
 use eframe::egui;
 
 use crate::app::{Channel, ViewerApp};
+use crate::volume::filter;
 use crate::volume::point::{self, PointOp};
 
 const SIDEBAR_WIDTH: f32 = 280.0;
@@ -78,6 +79,17 @@ impl ViewerApp {
                     }
                     if ui.add(egui::Button::new("grey luma").min_size(half_width)).clicked() {
                         self.apply_greyscale(point::GREY_LUMINANCE);
+                    }
+                });
+
+                // filters: they look at each pixel's neighbourhood, not just its own value
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.add(egui::Button::new("average").min_size(half_width)).clicked() {
+                        self.apply_filter(&filter::box_kernel(3), 3, 3);
+                    }
+                    if ui.add(egui::Button::new("sharpen").min_size(half_width)).clicked() {
+                        self.apply_filter(&filter::SHARPEN, 3, 3);
                     }
                 });
                 ui.separator();
