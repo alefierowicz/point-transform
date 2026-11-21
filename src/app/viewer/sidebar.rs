@@ -1,6 +1,7 @@
 use eframe::egui;
 
 use crate::app::{Channel, ViewerApp};
+use crate::theme;
 use crate::volume::filter;
 use crate::volume::point::{self, PointOp};
 
@@ -32,17 +33,23 @@ impl ViewerApp {
 
             if self.file.is_some() {
                 ui.separator();
-                ui.horizontal(|ui| {
-                    egui::ComboBox::from_id_salt("point_channel").selected_text(self.point_channel.label()).show_ui(
-                        ui,
-                        |ui| {
+                section_header(ui, "point transformations");
+
+                labelled_row(ui, "channel", |ui| {
+                    egui::ComboBox::from_id_salt("point_channel")
+                        .width(ui.available_width())
+                        .selected_text(self.point_channel.label())
+                        .show_ui(ui, |ui| {
                             for channel in Channel::ALL {
                                 ui.selectable_value(&mut self.point_channel, channel, channel.label());
                             }
-                        },
-                    );
-                    ui.add(egui::DragValue::new(&mut self.point_value).speed(0.1).max_decimals(2));
+                        });
                 });
+                labelled_row(ui, "value", |ui| {
+                    let size = egui::vec2(ui.available_width(), ui.spacing().interact_size.y);
+                    ui.add_sized(size, egui::DragValue::new(&mut self.point_value).speed(0.1).max_decimals(2));
+                });
+                ui.add_space(4.0);
 
                 // two rows of two, so the buttons fit the sidebar width
                 let half_width = egui::vec2((ui.available_width() - ui.spacing().item_spacing.x) / 2.0, 0.0);
@@ -62,6 +69,11 @@ impl ViewerApp {
                         self.apply_point_op(PointOp::Divide(self.channel_values(1.0)));
                     }
                 });
+
+                // brightness and greyscale always work on all channels
+                ui.add_space(4.0);
+                ui.separator();
+                ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     // the slider's track plus its value box take up the left half
                     let spacing = ui.spacing();
@@ -84,6 +96,7 @@ impl ViewerApp {
 
                 // filters: they look at each pixel's neighbourhood, not just its own value
                 ui.separator();
+                section_header(ui, "filters");
                 ui.horizontal(|ui| {
                     if ui.add(egui::Button::new("average").min_size(half_width)).clicked() {
                         self.apply_filter(&filter::box_kernel(3), 3, 3);
@@ -104,4 +117,25 @@ impl ViewerApp {
             }
         });
     }
+}
+
+const LABEL_WIDTH: f32 = 64.0;
+
+/// bold heading at the start of a sidebar section
+fn section_header(ui: &mut egui::Ui, text: &str) {
+    ui.add_space(4.0);
+    ui.label(egui::RichText::new(text).size(16.0).family(egui::FontFamily::Name(theme::BOLD.into())));
+    ui.add_space(4.0);
+}
+
+/// a label with a fixed width on the left, so the widgets after it line up from row to row
+fn labelled_row(ui: &mut egui::Ui, label: &str, add_contents: impl FnOnce(&mut egui::Ui)) {
+    ui.horizontal(|ui| {
+        let size = egui::vec2(LABEL_WIDTH, ui.spacing().interact_size.y);
+        ui.allocate_ui_with_layout(size, egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            ui.set_min_width(LABEL_WIDTH);
+            ui.label(label);
+        });
+        add_contents(ui);
+    });
 }
