@@ -158,6 +158,13 @@ impl ViewerApp {
             Err(msg) => self.error = Some(msg),
         }
     }
+
+    fn apply_greyscale(&mut self, weights: [f64;3]) {
+        let Some(file) = &self.file else {return} ;
+        let grey = file.original.volume().greyscale(weights);
+
+        self.set_result(grey)
+    }
 }
 
 impl eframe::App for ViewerApp {

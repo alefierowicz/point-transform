@@ -1,7 +1,7 @@
 use eframe::egui;
 
 use crate::app::{Channel, ViewerApp};
-use crate::volume::point::PointOp;
+use crate::volume::point::{self, PointOp};
 
 const SIDEBAR_WIDTH: f32 = 280.0;
 
@@ -70,6 +70,14 @@ impl ViewerApp {
 
                     if ui.add(egui::Button::new("brightness").min_size(half_width)).clicked() {
                         self.apply_point_op(PointOp::Brightness(self.point_brightness));
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if ui.add(egui::Button::new("grey avg").min_size(half_width)).clicked() {
+                        self.apply_greyscale(point::GREY_AVERAGE);
+                    }
+                    if ui.add(egui::Button::new("grey luma").min_size(half_width)).clicked() {
+                        self.apply_greyscale(point::GREY_LUMINANCE);
                     }
                 });
                 ui.separator();
