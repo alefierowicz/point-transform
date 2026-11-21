@@ -80,9 +80,6 @@ pub fn parse(bytes: &[u8]) -> Result<Volume, String> {
     let height = reader.read_uint()?;
     let maxval = reader.read_uint()?;
 
-    if width == 0 || height == 0 {
-        return Err(format!("invalid image dimension: {} x {}", width, height));
-    }
     // checking for overflow on bad files
     let Some(samples) = (width as usize).checked_mul(height as usize).and_then(|n| n.checked_mul(3)) else {
         return Err("image too big! aborting to prevent overflow".into());
@@ -90,9 +87,6 @@ pub fn parse(bytes: &[u8]) -> Result<Volume, String> {
 
     if maxval > u16::MAX as u32 {
         return Err(format!("maximum value {} out of range: 1-65535", maxval));
-    }
-    if maxval == 0 {
-        return Err("maximum value cannot be zero".into());
     }
     let data = match format {
         PPMFormat::P6 => read_p6(bytes, reader.pos, samples, width as usize, maxval)?,

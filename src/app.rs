@@ -118,7 +118,6 @@ impl ViewerApp {
         self.file = Some(file);
         self.error = None;
         self.view = None;
-        self.jpeg_quality = 90;
     }
 
     fn set_result(&mut self, vol: Volume) {
@@ -159,9 +158,9 @@ impl ViewerApp {
         }
     }
 
-    fn apply_greyscale(&mut self, weights: [f64;3]) {
-        let Some(file) = &self.file else {return} ;
-        let grey = file.original.volume().greyscale(weights);
+    fn apply_greyscale(&mut self, weights: [f64; 3]) {
+        let Some(file) = &self.file else { return };
+        let grey = file.result.volume().greyscale(weights);
 
         self.set_result(grey)
     }

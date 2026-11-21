@@ -6,7 +6,7 @@ pub const GREY_LUMINANCE: [f64; 3] = [0.299, 0.587, 0.114];
 
 impl Volume {
     /// effectively performing the transformation, t is the transfer function
-    pub fn map_point(&self, t: impl Fn(usize, f64) -> f64) -> Volume {
+    fn map_point(&self, t: impl Fn(usize, f64) -> f64) -> Volume {
         let tables = [0, 1, 2].map(|c| build_table(self.maxval, |r| t(c, r)));
         let new_data: Vec<u16> = self.data.iter().enumerate().map(|(i, &v)| tables[i % 3][v as usize]).collect();
 
@@ -21,17 +21,12 @@ impl Volume {
     pub fn greyscale(&self, weights: [f64; 3]) -> Volume {
         let mut out = Vec::with_capacity(self.data.len());
         for chunk in self.data.chunks_exact(3) {
-            //     let gray: f64 = (weights[0] * chunk[0] as f64 + weights[1] * chunk[1] as f64 + weights[2] * chunk[2] as f64).round().clamp(0.0,self.maxval as f64);
-            //     for _ in [0, 1, 2] {
-            //         out.push(gray);
-            //     }
-
             let grey = chunk.iter().zip(weights).map(|(&v, w)| v as f64 * w).sum::<f64>();
-            let g = grey.round().clamp(0.0, self.maxval as f64) as u16; 
+            let g = grey.round().clamp(0.0, self.maxval as f64) as u16;
             out.extend_from_slice(&[g, g, g]);
         }
-        
-        Volume {h:self.h, w:self.w, maxval: self.maxval, data:out}
+
+        Volume { h: self.h, w: self.w, maxval: self.maxval, data: out }
     }
 }
 

@@ -85,19 +85,14 @@ impl ViewerApp {
     fn paint_pane(ui: &egui::Ui, rect: egui::Rect, title: &str, layer: &Layer, view: &View) {
         let painter = ui.painter_at(rect);
 
-        if let Some(texture) = layer.texture() {
-            let image_size = texture.size_vec2();
-            let image_rect = egui::Rect::from_min_size(rect.min + view.offset, image_size * view.zoom);
-            let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-            painter.image(texture.id(), image_rect, uv, egui::Color32::WHITE);
+        let Some(texture) = layer.texture() else { return };
+        let image_size = texture.size_vec2();
+        let image_rect = egui::Rect::from_min_size(rect.min + view.offset, image_size * view.zoom);
+        let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+        painter.image(texture.id(), image_rect, uv, egui::Color32::WHITE);
 
-            if view.zoom >= MIN_LABEL_ZOOM {
-                Self::draw_pixel_values(&painter, rect, image_rect, view.zoom, image_size, layer.volume());
-            }
-        } else {
-            let font = egui::FontId::proportional(14.0);
-            let color = ui.visuals().text_color();
-            painter.text(rect.center(), egui::Align2::CENTER_CENTER, "cannot display this image", font, color);
+        if view.zoom >= MIN_LABEL_ZOOM {
+            Self::draw_pixel_values(&painter, rect, image_rect, view.zoom, layer.volume());
         }
 
         // title in the top-left corner, with a shadow so it reads on any image
@@ -112,9 +107,9 @@ impl ViewerApp {
         rect: egui::Rect,
         image_rect: egui::Rect,
         zoom: f32,
-        image_size: egui::Vec2,
         volume: &Volume,
     ) {
+        let image_size = egui::vec2(volume.width() as f32, volume.height() as f32);
         let first = ((rect.min - image_rect.min) / zoom).floor().max(egui::Vec2::ZERO);
 
         let last = ((rect.max - image_rect.min) / zoom).ceil().min(image_size);
@@ -128,7 +123,7 @@ impl ViewerApp {
 
                 let text = format!("{}\n{}\n{}", val[0], val[1], val[2]);
                 let center = image_rect.min + egui::vec2(x as f32 + 0.5, y as f32 + 0.5) * zoom;
-
+                // cool shadow
                 painter.text(
                     center + egui::vec2(1.0, 1.0),
                     egui::Align2::CENTER_CENTER,

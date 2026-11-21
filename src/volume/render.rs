@@ -13,11 +13,9 @@ impl Volume {
         if x >= self.w || y >= self.h {
             return None;
         }
-        let idx = y * self.w + x;
+        // the check above guarantees the pixel is inside the image, so indexing can't fail
+        let start = (y * self.w + x) * 3;
 
-        let start = idx * 3;
-        let pixel = self.data.get(start..start + 3)?;
-
-        Some([pixel[0], pixel[1], pixel[2]])
+        Some([self.data[start], self.data[start + 1], self.data[start + 2]])
     }
 }
