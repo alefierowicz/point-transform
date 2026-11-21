@@ -164,6 +164,13 @@ impl ViewerApp {
 
         self.set_result(grey)
     }
+
+    fn apply_filter(&mut self, kernel: &[f64], kw: usize, kh: usize) {
+        let Some(file) = &self.file else { return };
+
+        let filtered = file.result.volume().convolve(kernel, kw, kh);
+        self.set_result(filtered);
+    }
 }
 
 impl eframe::App for ViewerApp {
