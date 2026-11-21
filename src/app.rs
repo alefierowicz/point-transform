@@ -17,8 +17,32 @@ pub struct ViewerApp {
     jpeg_quality: u8,
     /// original and result next to each other, or only the result
     side_by_side: bool,
-    /// R, G, B values for the point operations, in the image's own units
-    point_values: [f64; 3],
+    /// value for the point operations, in the image's own units
+    point_value: f64,
+    /// which channel(s) the point operations change
+    point_channel: Channel,
+}
+
+/// channel choice for the point operations
+#[derive(Clone, Copy, PartialEq)]
+enum Channel {
+    All,
+    R,
+    G,
+    B,
+}
+
+impl Channel {
+    const ALL: [Channel; 4] = [Channel::All, Channel::R, Channel::G, Channel::B];
+
+    fn label(self) -> &'static str {
+        match self {
+            Channel::All => "all",
+            Channel::R => "R",
+            Channel::G => "G",
+            Channel::B => "B",
+        }
+    }
 }
 
 /// an open image: the untouched original and the result that operations are applied to.
@@ -37,7 +61,15 @@ impl LoadedFile {
 
 impl Default for ViewerApp {
     fn default() -> Self {
-        Self { file: None, error: None, view: None, jpeg_quality: 90, side_by_side: true, point_values: [0.0; 3] }
+        Self {
+            file: None,
+            error: None,
+            view: None,
+            jpeg_quality: 90,
+            side_by_side: true,
+            point_value: 0.0,
+            point_channel: Channel::All,
+        }
     }
 }
 
@@ -101,6 +133,18 @@ impl ViewerApp {
         let original = file.original.volume().clone();
 
         self.set_result(original);
+    }
+
+    /// R, G, B values for a point operation: the value on the selected channel(s),
+    /// `neutral` (the value that leaves a sample unchanged) on the others
+    fn channel_values(&self, neutral: f64) -> [f64; 3] {
+        let v = self.point_value;
+        match self.point_channel {
+            Channel::All => [v, v, v],
+            Channel::R => [v, neutral, neutral],
+            Channel::G => [neutral, v, neutral],
+            Channel::B => [neutral, neutral, v],
+        }
     }
 
     /// applies a point operation to the result, so operations stack

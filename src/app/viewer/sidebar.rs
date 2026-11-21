@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use crate::app::ViewerApp;
+use crate::app::{Channel, ViewerApp};
 use crate::volume::point::PointOp;
 
 const SIDEBAR_WIDTH: f32 = 280.0;
@@ -32,28 +32,33 @@ impl ViewerApp {
             if self.file.is_some() {
                 ui.separator();
                 ui.horizontal(|ui| {
-                    for (value, label) in self.point_values.iter_mut().zip(["R", "G", "B"]) {
-                        ui.label(label);
-                        ui.add(egui::DragValue::new(value).speed(0.1).max_decimals(2));
-                    }
+                    egui::ComboBox::from_id_salt("point_channel").selected_text(self.point_channel.label()).show_ui(
+                        ui,
+                        |ui| {
+                            for channel in Channel::ALL {
+                                ui.selectable_value(&mut self.point_channel, channel, channel.label());
+                            }
+                        },
+                    );
+                    ui.add(egui::DragValue::new(&mut self.point_value).speed(0.1).max_decimals(2));
                 });
 
                 // two rows of two, so the buttons fit the sidebar width
                 let half_width = egui::vec2((ui.available_width() - ui.spacing().item_spacing.x) / 2.0, 0.0);
                 ui.horizontal(|ui| {
                     if ui.add(egui::Button::new("add").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Add(self.point_values));
+                        self.apply_point_op(PointOp::Add(self.channel_values(0.0)));
                     }
                     if ui.add(egui::Button::new("subtract").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Subtract(self.point_values));
+                        self.apply_point_op(PointOp::Subtract(self.channel_values(0.0)));
                     }
                 });
                 ui.horizontal(|ui| {
                     if ui.add(egui::Button::new("multiply").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Multiply(self.point_values));
+                        self.apply_point_op(PointOp::Multiply(self.channel_values(1.0)));
                     }
                     if ui.add(egui::Button::new("divide").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Divide(self.point_values));
+                        self.apply_point_op(PointOp::Divide(self.channel_values(1.0)));
                     }
                 });
                 ui.separator();
