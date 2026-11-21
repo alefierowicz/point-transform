@@ -61,6 +61,17 @@ impl ViewerApp {
                         self.apply_point_op(PointOp::Divide(self.channel_values(1.0)));
                     }
                 });
+                ui.horizontal(|ui| {
+                    // the slider's track plus its value box take up the left half
+                    let spacing = ui.spacing();
+                    let track_width = half_width.x - spacing.interact_size.x - spacing.item_spacing.x;
+                    ui.spacing_mut().slider_width = track_width;
+                    ui.add(egui::Slider::new(&mut self.point_brightness, -100.0..=100.0));
+
+                    if ui.add(egui::Button::new("brightness").min_size(half_width)).clicked() {
+                        self.apply_point_op(PointOp::Brightness(self.point_brightness));
+                    }
+                });
                 ui.separator();
                 if ui.add(egui::Button::new("reset").min_size(full_width)).clicked() {
                     self.reset_result();

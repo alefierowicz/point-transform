@@ -21,6 +21,7 @@ pub struct ViewerApp {
     point_value: f64,
     /// which channel(s) the point operations change
     point_channel: Channel,
+    point_brightness:f64,
 }
 
 /// channel choice for the point operations
@@ -69,6 +70,7 @@ impl Default for ViewerApp {
             side_by_side: true,
             point_value: 0.0,
             point_channel: Channel::All,
+            point_brightness: 0.0
         }
     }
 }

@@ -29,6 +29,7 @@ pub enum PointOp {
     Subtract([f64; 3]),
     Multiply([f64; 3]),
     Divide([f64; 3]),
+    Brightness(f64)
 }
 impl PointOp {
     fn check(&self) -> Result<(), String> {
@@ -40,7 +41,14 @@ impl PointOp {
                     return Err("values for multiplication or division must be greater than 0".into());
                 }
             }
+            // below -100 % the factor would turn negative
+            PointOp::Brightness(v) => {
+                if v < -100.0 {
+                    return Err("brightness must be at least -100 %".into());
+                }
+            }
             PointOp::Add(_) | PointOp::Subtract(_) => {}
+
         };
         Ok(())
     }
@@ -51,6 +59,7 @@ impl PointOp {
             PointOp::Subtract(k) => r - k[c],
             PointOp::Multiply(k) => r * k[c],
             PointOp::Divide(k) => r / k[c],
+            PointOp::Brightness(v) => r * (1.0 + v / 100.0)
         }
     }
 }
