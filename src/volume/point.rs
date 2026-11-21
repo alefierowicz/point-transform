@@ -1,4 +1,9 @@
 use crate::volume::Volume;
+
+pub const GREY_AVERAGE: [f64; 3] = [1.0 / 3.0; 3];
+/// recommendation BT.601
+pub const GREY_LUMINANCE: [f64; 3] = [0.299, 0.587, 0.114];
+
 impl Volume {
     /// effectively performing the transformation, t is the transfer function
     pub fn map_point(&self, t: impl Fn(usize, f64) -> f64) -> Volume {
@@ -12,7 +17,24 @@ impl Volume {
         op.check()?;
         Ok(self.map_point(|c, r| op.eval(c, r)))
     }
+
+    pub fn greyscale(&self, weights: [f64; 3]) -> Volume {
+        let mut out = Vec::with_capacity(self.data.len());
+        for chunk in self.data.chunks_exact(3) {
+            //     let gray: f64 = (weights[0] * chunk[0] as f64 + weights[1] * chunk[1] as f64 + weights[2] * chunk[2] as f64).round().clamp(0.0,self.maxval as f64);
+            //     for _ in [0, 1, 2] {
+            //         out.push(gray);
+            //     }
+
+            let grey = chunk.iter().zip(weights).map(|(&v, w)| v as f64 * w).sum::<f64>();
+            let g = grey.round().clamp(0.0, self.maxval as f64) as u16; 
+            out.extend_from_slice(&[g, g, g]);
+        }
+        
+        Volume {h:self.h, w:self.w, maxval: self.maxval, data:out}
+    }
 }
+
 /// building lookup tables for map_point to use and cut down on calculations
 fn build_table(maxval: u16, t: impl Fn(f64) -> f64) -> Vec<u16> {
     let mut table = Vec::with_capacity(maxval as usize + 1);
@@ -29,7 +51,7 @@ pub enum PointOp {
     Subtract([f64; 3]),
     Multiply([f64; 3]),
     Divide([f64; 3]),
-    Brightness(f64)
+    Brightness(f64),
 }
 impl PointOp {
     fn check(&self) -> Result<(), String> {
@@ -48,18 +70,17 @@ impl PointOp {
                 }
             }
             PointOp::Add(_) | PointOp::Subtract(_) => {}
-
         };
         Ok(())
     }
-
+    /// what we evaluate the pointOp to
     fn eval(&self, c: usize, r: f64) -> f64 {
         match *self {
             PointOp::Add(k) => r + k[c],
             PointOp::Subtract(k) => r - k[c],
             PointOp::Multiply(k) => r * k[c],
             PointOp::Divide(k) => r / k[c],
-            PointOp::Brightness(v) => r * (1.0 + v / 100.0)
+            PointOp::Brightness(v) => r * (1.0 + v / 100.0),
         }
     }
 }
