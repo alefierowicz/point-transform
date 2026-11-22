@@ -55,18 +55,22 @@ impl ViewerApp {
                 let half_width = egui::vec2((ui.available_width() - ui.spacing().item_spacing.x) / 2.0, 0.0);
                 ui.horizontal(|ui| {
                     if ui.add(egui::Button::new("add").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Add(self.channel_values(0.0)));
+                        let op = PointOp::Add(self.channel_values(0.0));
+                        self.apply_to_result(|v| v.apply(&op));
                     }
                     if ui.add(egui::Button::new("subtract").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Subtract(self.channel_values(0.0)));
+                        let op = PointOp::Subtract(self.channel_values(0.0));
+                        self.apply_to_result(|v| v.apply(&op));
                     }
                 });
                 ui.horizontal(|ui| {
                     if ui.add(egui::Button::new("multiply").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Multiply(self.channel_values(1.0)));
+                        let op = PointOp::Multiply(self.channel_values(1.0));
+                        self.apply_to_result(|v| v.apply(&op));
                     }
                     if ui.add(egui::Button::new("divide").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Divide(self.channel_values(1.0)));
+                        let op = PointOp::Divide(self.channel_values(1.0));
+                        self.apply_to_result(|v| v.apply(&op));
                     }
                 });
 
@@ -82,15 +86,16 @@ impl ViewerApp {
                     ui.add(egui::Slider::new(&mut self.point_brightness, -100.0..=100.0));
 
                     if ui.add(egui::Button::new("brightness").min_size(half_width)).clicked() {
-                        self.apply_point_op(PointOp::Brightness(self.point_brightness));
+                        let op = PointOp::Brightness(self.point_brightness);
+                        self.apply_to_result(|v| v.apply(&op));
                     }
                 });
                 ui.horizontal(|ui| {
                     if ui.add(egui::Button::new("grey avg").min_size(half_width)).clicked() {
-                        self.apply_greyscale(point::GREY_AVERAGE);
+                        self.apply_to_result(|v| Ok(v.greyscale(point::GREY_AVERAGE)));
                     }
                     if ui.add(egui::Button::new("grey luma").min_size(half_width)).clicked() {
-                        self.apply_greyscale(point::GREY_LUMINANCE);
+                        self.apply_to_result(|v| Ok(v.greyscale(point::GREY_LUMINANCE)));
                     }
                 });
 
@@ -99,10 +104,10 @@ impl ViewerApp {
                 section_header(ui, "filters");
                 ui.horizontal(|ui| {
                     if ui.add(egui::Button::new("average").min_size(half_width)).clicked() {
-                        self.apply_filter(&filter::box_kernel(3), 3, 3);
+                        self.apply_to_result(|v| Ok(v.convolve(&filter::box_kernel(3), 3, 3)));
                     }
                     if ui.add(egui::Button::new("sharpen").min_size(half_width)).clicked() {
-                        self.apply_filter(&filter::SHARPEN, 3, 3);
+                        self.apply_to_result(|v| Ok(v.convolve(&filter::SHARPEN, 3, 3)));
                     }
                 });
                 ui.horizontal(|ui| {
@@ -113,15 +118,17 @@ impl ViewerApp {
                     ui.add(egui::Slider::new(&mut self.filter_sigma, 0.1..=10.0));
 
                     if ui.add(egui::Button::new("gaussian").min_size(half_width)).clicked() {
-                        self.apply_gaussian();
+                        // copied out first: the closure can't borrow self while apply_to_result has it mutably
+                        let sigma = self.filter_sigma;
+                        self.apply_to_result(|v| Ok(v.gaussian(sigma)));
                     }
                 });
                 ui.horizontal(|ui| {
                     if ui.add(egui::Button::new("sobel").min_size(half_width)).clicked() {
-                        self.apply_sobel();
+                        self.apply_to_result(|v| Ok(v.sobel()));
                     }
                     if ui.add(egui::Button::new("median").min_size(half_width)).clicked() {
-                        self.apply_median();
+                        self.apply_to_result(|v| Ok(v.median(3)));
                     }
                 });
                 ui.separator();

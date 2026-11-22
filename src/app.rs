@@ -2,11 +2,7 @@ mod landing;
 mod layer;
 mod viewer;
 
-use crate::{
-    jpeg,
-    loader::load_file,
-    volume::{Volume, point::PointOp},
-};
+use crate::{jpeg, loader::load_file, volume::Volume};
 use eframe::egui;
 use layer::Layer;
 use std::path::Path;
@@ -150,44 +146,15 @@ impl ViewerApp {
         }
     }
 
-    /// applies a point operation to the result, so operations stack
-    fn apply_point_op(&mut self, op: PointOp) {
+    /// runs any operation on the result, so operations stack. `op` gets the current result
+    /// and returns the new one, or an error message that is shown in the sidebar
+    fn apply_to_result(&mut self, op: impl FnOnce(&Volume) -> Result<Volume, String>) {
         let Some(file) = &self.file else { return };
 
-        match file.result.volume().apply(&op) {
+        match op(file.result.volume()) {
             Ok(volume) => self.set_result(volume),
             Err(msg) => self.error = Some(msg),
         }
-    }
-
-    fn apply_greyscale(&mut self, weights: [f64; 3]) {
-        let Some(file) = &self.file else { return };
-        let grey = file.result.volume().greyscale(weights);
-        self.set_result(grey)
-    }
-
-    fn apply_filter(&mut self, kernel: &[f64], kw: usize, kh: usize) {
-        let Some(file) = &self.file else { return };
-        let filtered = file.result.volume().convolve(kernel, kw, kh);
-        self.set_result(filtered);
-    }
-
-    fn apply_gaussian(&mut self) {
-        let Some(file) = &self.file else { return };
-        let blurred = file.result.volume().gaussian(self.filter_sigma);
-        self.set_result(blurred)
-    }
-
-    fn apply_sobel(&mut self) {
-        let Some(file) = &self.file else { return };
-        let edges = file.result.volume().sobel();
-        self.set_result(edges);
-    }
-
-    fn apply_median(&mut self) {
-        let Some(file) = &self.file else { return };
-        let filtered = file.result.volume().median(3);
-        self.set_result(filtered);
     }
 }
 
