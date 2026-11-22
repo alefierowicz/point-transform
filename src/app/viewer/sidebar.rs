@@ -124,13 +124,20 @@ impl ViewerApp {
                     }
                 });
                 ui.horizontal(|ui| {
-                    if ui.add(egui::Button::new("sobel").min_size(half_width)).clicked() {
-                        self.apply_to_result(|v| Ok(v.sobel()));
-                    }
+                    // same layout as the gaussian row; step 2 from 3 keeps the window size odd
+                    let spacing = ui.spacing();
+                    let track_width = half_width.x - spacing.interact_size.x - spacing.item_spacing.x;
+                    ui.spacing_mut().slider_width = track_width;
+                    ui.add(egui::Slider::new(&mut self.median_size, 3..=9).step_by(2.0));
+
                     if ui.add(egui::Button::new("median").min_size(half_width)).clicked() {
-                        self.apply_to_result(|v| Ok(v.median(3)));
+                        let size = self.median_size;
+                        self.apply_to_result(|v| Ok(v.median(size)));
                     }
                 });
+                if ui.add(egui::Button::new("sobel").min_size(full_width)).clicked() {
+                    self.apply_to_result(|v| Ok(v.sobel()));
+                }
                 ui.separator();
                 if ui.add(egui::Button::new("reset").min_size(full_width)).clicked() {
                     self.reset_result();

@@ -19,6 +19,8 @@ pub struct ViewerApp {
     point_channel: Channel,
     point_brightness: f64,
     filter_sigma: f64,
+    /// window size for the median filter: 3, 5, 7 or 9
+    median_size: usize,
 }
 
 /// channel choice for the point operations
@@ -69,6 +71,7 @@ impl Default for ViewerApp {
             point_channel: Channel::All,
             point_brightness: 0.0,
             filter_sigma: 1.0,
+            median_size: 3,
         }
     }
 }

@@ -37,8 +37,6 @@ impl Volume {
         out
     }
 
-    /// median filter over an n x n window: each sample becomes the middle value of its
-    /// window in the same channel. removes outliers but keeps edges sharp
     pub fn median(&self, n: usize) -> Volume {
         debug_assert!(n % 2 == 1);
         let (w, h) = (self.w as isize, self.h as isize);
@@ -72,7 +70,6 @@ impl Volume {
         Volume { h: self.h, w: self.w, maxval: self.maxval, data: out }
     }
 
-    /// splits `out` into blocks of whole rows and fills them on all CPU cores at once.
     /// `fill_row(y, row)` computes image row `y` into `row`, which holds w * 3 samples
     fn par_rows<T: Send>(&self, out: &mut [T], fill_row: impl Fn(isize, &mut [T]) + Sync) {
         let row_len = self.w * 3;
@@ -101,13 +98,16 @@ impl Volume {
         result.convolve(&ker, 1, n)
     }
 
-    /// Sobel edge detection: edge strength sqrt(gx² + gy²) per sample,
     /// min-max normalised to [0, maxval] so the strongest edge becomes maxval
     pub fn sobel(&self) -> Volume {
         // raw, not clamped: gx and gy are negative for edges from bright to dark
-        let gx = self.convolve_raw(&SOBEL_X, 3, 3);
+        let mut magnitude = self.convolve_raw(&SOBEL_X, 3, 3);
         let gy = self.convolve_raw(&SOBEL_Y, 3, 3);
-        let magnitude: Vec<f64> = gx.iter().zip(&gy).map(|(x, y)| (x * x + y * y).sqrt()).collect();
+        // computed in place, over gx: saves a third image-sized f64 buffer
+        for (gx, gy) in magnitude.iter_mut().zip(&gy) {
+            *gx = (*gx * *gx + gy * gy).sqrt();
+        }
+        drop(gy);
 
         let min = magnitude.iter().copied().fold(f64::INFINITY, f64::min);
         let max = magnitude.iter().copied().fold(f64::NEG_INFINITY, f64::max);
@@ -132,7 +132,6 @@ pub const SHARPEN: [f64; 9] = [
      0.0, -1.0,  0.0,
 ];
 
-/// Sobel masks: horizontal and vertical change in brightness, both sum to 0
 #[rustfmt::skip]
 const SOBEL_X: [f64; 9] = [
     -1.0, 0.0, 1.0,
