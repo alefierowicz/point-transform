@@ -173,7 +173,7 @@ impl ViewerApp {
     }
 
     fn apply_gaussian(&mut self) {
-        let Some(file) = &self.file else {return};
+        let Some(file) = &self.file else { return };
         let blurred = file.result.volume().gaussian(self.filter_sigma);
         self.set_result(blurred)
     }
