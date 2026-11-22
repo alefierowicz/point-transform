@@ -60,6 +60,23 @@ impl Volume {
         // vertical pass
         result.convolve(&ker, 1, n)
     }
+
+    /// Sobel edge detection: edge strength sqrt(gx² + gy²) per sample,
+    /// min-max normalised to [0, maxval] so the strongest edge becomes maxval
+    pub fn sobel(&self) -> Volume {
+        // raw, not clamped: gx and gy are negative for edges from bright to dark
+        let gx = self.convolve_raw(&SOBEL_X, 3, 3);
+        let gy = self.convolve_raw(&SOBEL_Y, 3, 3);
+        let magnitude: Vec<f64> = gx.iter().zip(&gy).map(|(x, y)| (x * x + y * y).sqrt()).collect();
+
+        let min = magnitude.iter().copied().fold(f64::INFINITY, f64::min);
+        let max = magnitude.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        // a completely flat image has no edges at all: everything becomes 0
+        let scale = if max > min { self.maxval as f64 / (max - min) } else { 0.0 };
+
+        let data = magnitude.iter().map(|m| ((m - min) * scale).round() as u16).collect();
+        Volume { h: self.h, w: self.w, maxval: self.maxval, data }
+    }
 }
 
 /// n x n averaging mask
@@ -73,6 +90,20 @@ pub const SHARPEN: [f64; 9] = [
      0.0, -1.0,  0.0,
     -1.0,  5.0, -1.0,
      0.0, -1.0,  0.0,
+];
+
+/// Sobel masks: horizontal and vertical change in brightness, both sum to 0
+#[rustfmt::skip]
+const SOBEL_X: [f64; 9] = [
+    -1.0, 0.0, 1.0,
+    -2.0, 0.0, 2.0,
+    -1.0, 0.0, 1.0,
+];
+#[rustfmt::skip]
+const SOBEL_Y: [f64; 9] = [
+    -1.0, -2.0, -1.0,
+     0.0,  0.0,  0.0,
+     1.0,  2.0,  1.0,
 ];
 
 fn gaussian_kernel(sigma: f64) -> Vec<f64> {

@@ -116,6 +116,11 @@ impl ViewerApp {
                         self.apply_gaussian();
                     }
                 });
+                ui.horizontal(|ui| {
+                    if ui.add(egui::Button::new("sobel").min_size(half_width)).clicked() {
+                        self.apply_sobel();
+                    }
+                });
                 ui.separator();
                 if ui.add(egui::Button::new("reset").min_size(full_width)).clicked() {
                     self.reset_result();

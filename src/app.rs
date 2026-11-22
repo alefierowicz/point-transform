@@ -177,6 +177,12 @@ impl ViewerApp {
         let blurred = file.result.volume().gaussian(self.filter_sigma);
         self.set_result(blurred)
     }
+
+    fn apply_sobel(&mut self) {
+        let Some(file) = &self.file else { return };
+        let edges = file.result.volume().sobel();
+        self.set_result(edges);
+    }
 }
 
 impl eframe::App for ViewerApp {
