@@ -1,7 +1,7 @@
-mod getters;
-mod render;
 pub mod filter;
+mod getters;
 pub mod point;
+mod render;
 
 #[derive(Clone)]
 pub struct Volume {

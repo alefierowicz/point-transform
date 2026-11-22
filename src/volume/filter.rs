@@ -50,3 +50,13 @@ pub const SHARPEN: [f64; 9] = [
     -1.0,  5.0, -1.0,
      0.0, -1.0,  0.0,
 ];
+
+fn gaussian_kernel(sigma: f64) -> Vec<f64> {
+    // g(x) = e^(-x^2 / (2*sigma^2))
+    let r = 3 * sigma.ceil() as i32;
+    let mut mask: Vec<f64> = (-r..=r).map(|x| (-(x * x) as f64 / (2.0 * sigma * sigma)).exp()).collect();
+    let s: f64 = mask.iter().sum();
+
+    mask.iter_mut().for_each(|v| *v /= s);
+    mask
+}
