@@ -9,47 +9,87 @@ impl Volume {
 
     fn convolve_raw(&self, kernel: &[f64], kw: usize, kh: usize) -> Vec<f64> {
         debug_assert!(kernel.len() == kw * kh && kw % 2 == 1 && kh % 2 == 1);
-        
+
         let (w, h) = (self.w as isize, self.h as isize);
-        
+
         // distance from edge to centre of mask
         let (rx, ry) = ((kw / 2) as isize, (kh / 2) as isize);
         let mut out = vec![0.0; self.data.len()];
-        
-        // threading !!!
+
+        self.par_rows(&mut out, |y, row| {
+            for x in 0..w {
+                let mut sum = [0.0; 3];
+                for ky in 0..kh {
+                    let sy = (y + ky as isize - ry).clamp(0, h - 1) as usize;
+                    for kx in 0..kw {
+                        let sx = (x + kx as isize - rx).clamp(0, w - 1) as usize;
+                        let weight = kernel[ky * kw + kx];
+                        let i = (sy * self.w + sx) * 3;
+                        for c in 0..3 {
+                            sum[c] += weight * self.data[i + c] as f64;
+                        }
+                    }
+                }
+                let at = x as usize * 3;
+                row[at..at + 3].copy_from_slice(&sum);
+            }
+        });
+        out
+    }
+
+    /// median filter over an n x n window: each sample becomes the middle value of its
+    /// window in the same channel. removes outliers but keeps edges sharp
+    pub fn median(&self, n: usize) -> Volume {
+        debug_assert!(n % 2 == 1);
+        let (w, h) = (self.w as isize, self.h as isize);
+        let r = (n / 2) as isize;
+        let mut out = vec![0; self.data.len()];
+
+        self.par_rows(&mut out, |y, row| {
+            // one window per channel, reused for every pixel in the row
+            let mut windows: [Vec<u16>; 3] = std::array::from_fn(|_| Vec::with_capacity(n * n));
+            for x in 0..w {
+                windows.iter_mut().for_each(Vec::clear);
+                for dy in -r..=r {
+                    // positions outside the image use the nearest edge pixel, as in convolve_raw
+                    let sy = (y + dy).clamp(0, h - 1) as usize;
+                    for dx in -r..=r {
+                        let sx = (x + dx).clamp(0, w - 1) as usize;
+                        let i = (sy * self.w + sx) * 3;
+                        for c in 0..3 {
+                            windows[c].push(self.data[i + c]);
+                        }
+                    }
+                }
+                // the middle value: only places that one element correctly, without sorting the rest
+                let mid = n * n / 2;
+                let at = x as usize * 3;
+                for c in 0..3 {
+                    row[at + c] = *windows[c].select_nth_unstable(mid).1;
+                }
+            }
+        });
+        Volume { h: self.h, w: self.w, maxval: self.maxval, data: out }
+    }
+
+    /// splits `out` into blocks of whole rows and fills them on all CPU cores at once.
+    /// `fill_row(y, row)` computes image row `y` into `row`, which holds w * 3 samples
+    fn par_rows<T: Send>(&self, out: &mut [T], fill_row: impl Fn(isize, &mut [T]) + Sync) {
+        let row_len = self.w * 3;
         let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
         let rows_per_block = self.h.div_ceil(threads);
-        let block_len = rows_per_block * self.w * 3;
 
         std::thread::scope(|scope| {
-            for (b, block) in out.chunks_mut(block_len).enumerate() {
+            // non-overlapping blocks, so no two threads ever write the same sample
+            for (b, block) in out.chunks_mut(rows_per_block * row_len).enumerate() {
+                let fill_row = &fill_row;
                 scope.spawn(move || {
-                    let first_row = (b * rows_per_block) as isize;
-                    let rows = (block.len() / (self.w * 3)) as isize;
-
-                    for (o, y) in (first_row..first_row + rows).enumerate() {
-                        for x in 0..w {
-                            let mut sum = [0.0; 3];
-                            for ky in 0..kh {
-                                let sy = (y + ky as isize - ry).clamp(0, h - 1) as usize;
-                                for kx in 0..kw {
-                                    let sx = (x + kx as isize - rx).clamp(0, w - 1) as usize;
-                                    let weight = kernel[ky * kw + kx];
-                                    let i = (sy * self.w + sx) * 3;
-                                    for c in 0..3 {
-                                        sum[c] += weight * self.data[i + c] as f64;
-                                    }
-                                }
-                            }
-                            // write into this thread's block, not push onto a shared Vec
-                            let at = (o * self.w + x as usize) * 3;
-                            block[at..at + 3].copy_from_slice(&sum);
-                        }
+                    for (i, row) in block.chunks_mut(row_len).enumerate() {
+                        fill_row((b * rows_per_block + i) as isize, row);
                     }
                 });
             }
         });
-        out
     }
 
     pub fn gaussian(&self, sigma: f64) -> Volume {

@@ -120,6 +120,9 @@ impl ViewerApp {
                     if ui.add(egui::Button::new("sobel").min_size(half_width)).clicked() {
                         self.apply_sobel();
                     }
+                    if ui.add(egui::Button::new("median").min_size(half_width)).clicked() {
+                        self.apply_median();
+                    }
                 });
                 ui.separator();
                 if ui.add(egui::Button::new("reset").min_size(full_width)).clicked() {

@@ -183,6 +183,12 @@ impl ViewerApp {
         let edges = file.result.volume().sobel();
         self.set_result(edges);
     }
+
+    fn apply_median(&mut self) {
+        let Some(file) = &self.file else { return };
+        let filtered = file.result.volume().median(3);
+        self.set_result(filtered);
+    }
 }
 
 impl eframe::App for ViewerApp {
