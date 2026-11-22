@@ -36,6 +36,15 @@ impl Volume {
         }
         out
     }
+
+    pub fn gaussian(&self, sigma: f64) -> Volume {
+        let ker = gaussian_kernel(sigma);
+        let n = ker.len();
+        // horizontal pass
+        let result = self.convolve(&ker, n, 1);
+        // vertical pass
+        result.convolve(&ker, 1, n)
+    }
 }
 
 /// n x n averaging mask
@@ -56,7 +65,9 @@ fn gaussian_kernel(sigma: f64) -> Vec<f64> {
     let r = (3.0 * sigma).ceil() as i32;
     let mut mask: Vec<f64> = (-r..=r).map(|x| (-(x * x) as f64 / (2.0 * sigma * sigma)).exp()).collect();
     let s: f64 = mask.iter().sum();
-
+    
     mask.iter_mut().for_each(|v| *v /= s);
+    debug_assert!(mask.len()%2 == 1 && mask.iter().eq(mask.iter().rev()));
     mask
 }
+

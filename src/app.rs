@@ -22,6 +22,7 @@ pub struct ViewerApp {
     /// which channel(s) the point operations change
     point_channel: Channel,
     point_brightness: f64,
+    filter_sigma: f64,
 }
 
 /// channel choice for the point operations
@@ -71,6 +72,7 @@ impl Default for ViewerApp {
             point_value: 0.0,
             point_channel: Channel::All,
             point_brightness: 0.0,
+            filter_sigma: 1.0,
         }
     }
 }
@@ -161,15 +163,19 @@ impl ViewerApp {
     fn apply_greyscale(&mut self, weights: [f64; 3]) {
         let Some(file) = &self.file else { return };
         let grey = file.result.volume().greyscale(weights);
-
         self.set_result(grey)
     }
 
     fn apply_filter(&mut self, kernel: &[f64], kw: usize, kh: usize) {
         let Some(file) = &self.file else { return };
-
         let filtered = file.result.volume().convolve(kernel, kw, kh);
         self.set_result(filtered);
+    }
+
+    fn apply_gaussian(&mut self) {
+        let Some(file) = &self.file else {return};
+        let blurred = file.result.volume().gaussian(self.filter_sigma);
+        self.set_result(blurred)
     }
 }
 

@@ -105,6 +105,17 @@ impl ViewerApp {
                         self.apply_filter(&filter::SHARPEN, 3, 3);
                     }
                 });
+                ui.horizontal(|ui| {
+                    // the slider's track plus its value box take up the left half
+                    let spacing = ui.spacing();
+                    let track_width = half_width.x - spacing.interact_size.x - spacing.item_spacing.x;
+                    ui.spacing_mut().slider_width = track_width;
+                    ui.add(egui::Slider::new(&mut self.filter_sigma, 0.1..=10.0));
+
+                    if ui.add(egui::Button::new("gaussian").min_size(half_width)).clicked() {
+                        self.apply_gaussian();
+                    }
+                });
                 ui.separator();
                 if ui.add(egui::Button::new("reset").min_size(full_width)).clicked() {
                     self.reset_result();
